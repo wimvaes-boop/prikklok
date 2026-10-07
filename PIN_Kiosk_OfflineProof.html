@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zaal Vrijwilligers Kiosk (Cloud Sync & Live PINs)</title>
+  <style>
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    body { background-color: #0f172a; color: #f8fafc; margin: 0; padding: 20px; min-height: 100vh; display: flex; flex-direction: column; align-items: center; }
+    .header { text-align: center; margin-bottom: 20px; }
+    .header h1 { margin: 0; font-size: 28px; color: #38bdf8; }
+    .header p { margin: 5px 0 0; color: #94a3b8; font-size: 16px; }
+
+    .sync-status { display: inline-flex; align-items: center; gap: 8px; background: #1e293b; padding: 6px 14px; border-radius: 20px; border: 1px solid #334155; font-size: 13px; color: #38bdf8; margin-top: 10px; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .dot-online { background-color: #10b981; box-shadow: 0 0 8px #10b981; }
+    .dot-offline { background-color: #ef4444; box-shadow: 0 0 8px #ef4444; }
+    .dot-pending { background-color: #f59e0b; box-shadow: 0 0 8px #f59e0b; }
+
+    .main-container { display: flex; gap: 30px; width: 100%; max-width: 900px; justify-content: center; flex-wrap: wrap; }
+    
+    .kiosk-card { background: #1e293b; padding: 25px; border-radius: 16px; width: 380px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); border: 1px solid #334155; }
+    .pin-display { background: #0f172a; border: 2px solid #38bdf8; border-radius: 10px; height: 60px; display: flex; align-items: center; justify-content: center; font-size: 32px; letter-spacing: 12px; margin-bottom: 20px; color: #f8fafc; font-weight: bold; }
+    
+    .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .btn-num { background: #334155; border: none; color: white; font-size: 24px; font-weight: bold; padding: 18px 0; border-radius: 10px; cursor: pointer; user-select: none; }
+    .btn-num:active { background: #475569; transform: scale(0.98); }
+    .btn-clear { background: #ef4444; color: white; }
+    .btn-enter { background: #10b981; color: white; grid-column: span 3; font-size: 20px; padding: 15px 0; margin-top: 5px; }
+    .btn-enter:disabled { background: #64748b; opacity: 0.6; cursor: not-allowed; }
+
+    .status-box { margin-top: 15px; padding: 12px; border-radius: 8px; text-align: center; font-size: 15px; font-weight: 600; display: none; }
+    .status-success { background: #065f46; color: #a7f3d0; border: 1px solid #059669; }
+    .status-error { background: #991b1b; color: #fecaca; border: 1px solid #dc2626; }
+
+    .side-panel { background: #1e293b; padding: 25px; border-radius: 16px; flex: 1; min-width: 300px; max-width: 450px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); border: 1px solid #334155; display: flex; flex-direction: column; }
+    .side-panel h2 { margin-top: 0; font-size: 20px; color: #38bdf8; border-bottom: 1px solid #334155; padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+    .badge { background: #0284c7; color: white; font-size: 14px; padding: 2px 10px; border-radius: 12px; }
+
+    .vol-list { list-style: none; padding: 0; margin: 0; flex-grow: 1; max-height: 320px; overflow-y: auto; }
+    .vol-item { background: #0f172a; padding: 12px 15px; border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid #10b981; }
+    .vol-item .name { font-weight: bold; font-size: 16px; }
+    .vol-item .time { color: #94a3b8; font-size: 14px; }
+
+    .actions { margin-top: 20px; display: flex; gap: 10px; }
+    .btn-secondary { background: #475569; border: none; color: white; padding: 10px 15px; border-radius: 8px; cursor: pointer; flex: 1; font-weight: 600; font-size: 13px; text-align: center; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>Zaal Vrijwilligers Kiosk</h1>
+    <p>Voer je persoonlijke PIN-code in om in- of uit te checken</p>
+    <div class="sync-status">
+      <span id="statusDot" class="dot dot-online"></span> 
+      <span id="syncStatusText">Cloud Sync Actief</span>
+    </div>
+  </div>
+
+  <div class="main-container">
+    <div class="kiosk-card">
+      <div class="pin-display" id="pinDisplay">----</div>
+      <div class="numpad">
+        <button type="button" class="btn-num" onclick="press('1')">1</button>
+        <button type="button" class="btn-num" onclick="press('2')">2</button>
+        <button type="button" class="btn-num" onclick="press('3')">3</button>
+        <button type="button" class="btn-num" onclick="press('4')">4</button>
+        <button type="button" class="btn-num" onclick="press('5')">5</button>
+        <button type="button" class="btn-num" onclick="press('6')">6</button>
+        <button type="button" class="btn-num" onclick="press('7')">7</button>
+        <button type="button" class="btn-num" onclick="press('8')">8</button>
+        <button type="button" class="btn-num" onclick="press('9')">9</button>
+        <button type="button" class="btn-num btn-clear" onclick="clearPin()">C</button>
+        <button type="button" class="btn-num" onclick="press('0')">0</button>
+        <button type="button" class="btn-num btn-clear" onclick="backspace()">⌫</button>
+        <button type="button" class="btn-num btn-enter" id="btnSubmit" onclick="submitPin()">BEVESTIGEN</button>
+      </div>
+      <div id="statusBox" class="status-box"></div>
+    </div>
+
+    <div class="side-panel">
+      <h2>Momenteel Aanwezig <span class="badge" id="activeCount">0</span></h2>
+      <ul class="vol-list" id="activeList"></ul>
+      <div class="actions">
+        <button type="button" class="btn-secondary" onclick="fetchVolunteersFromSheet(true)">Vernieuw PINs</button>
+        <button type="button" class="btn-secondary" onclick="configureScriptUrl()">Koppel Google Sheet</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const HARDCODED_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwH220S9kJ_I3ExnJ4Ajq4XWtb6peRnsaXSjpd1pWKXG8UddDp_aFfkYFT6eHVJVPXB/exec";
+
+    let googleAppScriptUrl = HARDCODED_SCRIPT_URL;
+    localStorage.setItem('kiosk_script_url', HARDCODED_SCRIPT_URL);
+
+    let defaultVols = {
+      "1234": "Jan Peeters",
+      "5678": "Sophie Willems"
+    };
+
+    let volunteers = JSON.parse(localStorage.getItem('kiosk_vols_live') || JSON.stringify(defaultVols));
+    let activeSessions = JSON.parse(localStorage.getItem('kiosk_active') || '{}');
+    let logs = JSON.parse(localStorage.getItem('kiosk_logs') || '[]');
+    let offlineQueue = JSON.parse(localStorage.getItem('kiosk_offline_queue') || '[]');
+    let currentPin = "";
+    let isSubmitting = false;
+    let isProcessingQueue = false;
+
+    // Synchroniseer toestand automatisch tussen meerdere tabbladen in dezelfde browser
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'kiosk_active') {
+        activeSessions = JSON.parse(e.newValue || '{}');
+        renderActiveList();
+      } else if (e.key === 'kiosk_offline_queue') {
+        offlineQueue = JSON.parse(e.newValue || '[]');
+        updateSyncBadge();
+      } else if (e.key === 'kiosk_vols_live') {
+        volunteers = JSON.parse(e.newValue || JSON.stringify(defaultVols));
+      }
+    });
+
+    async function fetchVolunteersFromSheet(showNotification = false) {
+      if (!googleAppScriptUrl || !navigator.onLine) return;
+
+      try {
+        const response = await fetch(googleAppScriptUrl);
+        if (response.ok) {
+          const data = await response.json();
+          if (data && Object.keys(data).length > 0) {
+            volunteers = data;
+            localStorage.setItem('kiosk_vols_live', JSON.stringify(volunteers));
+            if (showNotification) {
+              showStatus("PIN-lijst succesvol vernieuwd uit Google Sheet!", true);
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Fout bij ophalen vrijwilligers uit Google Sheet:", err);
+      }
+    }
+
+    function updateSyncBadge() {
+      const dot = document.getElementById('statusDot');
+      const text = document.getElementById('syncStatusText');
+
+      if (!navigator.onLine) {
+        dot.className = "dot dot-offline";
+        text.innerText = `Offline (${offlineQueue.length} wachtend op herstel)`;
+      } else if (offlineQueue.length > 0) {
+        dot.className = "dot dot-pending";
+        text.innerText = `Bezig met synchroniseren... (${offlineQueue.length} in wachtrij)`;
+      } else {
+        dot.className = "dot dot-online";
+        text.innerText = "Cloud Sync Actief & Bijgewerkt";
+      }
+    }
+
+    function updatePinDisplay() {
+      const display = document.getElementById('pinDisplay');
+      display.innerText = currentPin ? "*".repeat(currentPin.length) : "----";
+    }
+
+    function press(num) {
+      if (currentPin.length < 6) { 
+        currentPin += num; 
+        updatePinDisplay(); 
+      }
+    }
+
+    function clearPin() { 
+      currentPin = ""; 
+      updatePinDisplay(); 
+    }
+    
+    function backspace() { 
+      currentPin = currentPin.slice(0, -1); 
+      updatePinDisplay(); 
+    }
+
+    function showStatus(message, isSuccess) {
+      const box = document.getElementById('statusBox');
+      box.innerText = message;
+      box.className = `status-box ${isSuccess ? 'status-success' : 'status-error'}`;
+      box.style.display = 'block';
+      setTimeout(() => { box.style.display = 'none'; }, 4000);
+    }
+
+    async function queueAndSend(data) {
+      // 1. Controleer of exact deze actie al in de wachtrij zit (voorkomt dubbele invoer bij snelle clicks)
+      const isAlreadyInQueue = offlineQueue.some(item => 
+        item.pin === data.pin && 
+        item.actie === data.actie && 
+        item.datum === data.datum &&
+        item.inchecktijd === data.inchecktijd && 
+        item.uitchecktijd === data.uitchecktijd
+      );
+
+      if (!isAlreadyInQueue) {
+        offlineQueue.push(data);
+        localStorage.setItem('kiosk_offline_queue', JSON.stringify(offlineQueue));
+      }
+
+      processQueue();
+    }
+
+    async function processQueue() {
+      // Cruciaal: Voorkom dat processQueue meerdere keren tegelijk draait (Race Condition Lock)
+      if (isProcessingQueue) return;
+      if (!googleAppScriptUrl || offlineQueue.length === 0 || !navigator.onLine) {
+        updateSyncBadge();
+        return;
+      }
+
+      isProcessingQueue = true;
+      updateSyncBadge();
+
+      try {
+        // Verwerk items één voor één uit de wachtrij
+        while (offlineQueue.length > 0 && navigator.onLine) {
+          const item = offlineQueue[0];
+
+          await fetch(googleAppScriptUrl, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(item)
+          });
+          
+          // Verwijder het item pas NADAT de fetch voltooid is
+          offlineQueue.shift();
+          localStorage.setItem('kiosk_offline_queue', JSON.stringify(offlineQueue));
+          updateSyncBadge();
+        }
+      } catch (err) {
+        console.error("Netwerkfout bij synchroniseren, wachtrij gepauzeerd:", err);
+      } finally {
+        isProcessingQueue = false;
+        updateSyncBadge();
+      }
+    }
+
+    function submitPin() {
+      if (isSubmitting || !currentPin) return;
+      
+      const btn = document.getElementById('btnSubmit');
+      isSubmitting = true;
+      btn.disabled = true;
+
+      const name = volunteers[currentPin];
+      if (!name) {
+        showStatus("Onbekende PIN-code. Probeer opnieuw.", false);
+        clearPin();
+        btn.disabled = false;
+        isSubmitting = false;
+        return;
+      }
+
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit' });
+      const dateStr = now.toLocaleDateString('nl-BE');
+      const uniqueId = `${Date.now()}_${currentPin}_${Math.random().toString(36).substring(2, 7)}`;
+
+      let payload = {};
+
+      if (activeSessions[currentPin]) {
+        // --- UITCHECKEN ---
+        const session = activeSessions[currentPin];
+        const checkInTime = session.checkInTime;
+        delete activeSessions[currentPin];
+        
+        payload = {
+          id: uniqueId,
+          datum: dateStr,
+          pin: currentPin,
+          naam: name,
+          inchecktijd: checkInTime,
+          uitchecktijd: timeStr,
+          actie: "UITCHECK"
+        };
+
+        logs.push(payload);
+        showStatus(`Dag ${name}! Uitgecheckt om ${timeStr}.`, true);
+      } else {
+        // --- INCHECKEN ---
+        activeSessions[currentPin] = { name: name, checkInTime: timeStr, date: dateStr };
+        payload = {
+          id: uniqueId,
+          datum: dateStr,
+          pin: currentPin,
+          naam: name,
+          inchecktijd: timeStr,
+          uitchecktijd: "",
+          actie: "INCHECK"
+        };
+        showStatus(`Welkom ${name}! Ingecheckt om ${timeStr}.`, true);
+      }
+
+      localStorage.setItem('kiosk_active', JSON.stringify(activeSessions));
+      localStorage.setItem('kiosk_logs', JSON.stringify(logs));
+      
+      queueAndSend(payload);
+
+      clearPin();
+      renderActiveList();
+
+      // Debounce opheffen na 1.2 seconden
+      setTimeout(() => {
+        isSubmitting = false;
+        btn.disabled = false;
+      }, 1200);
+    }
+
+    function renderActiveList() {
+      const listEl = document.getElementById('activeList');
+      const countEl = document.getElementById('activeCount');
+      listEl.innerHTML = '';
+
+      const pins = Object.keys(activeSessions);
+      countEl.innerText = pins.length;
+
+      if (pins.length === 0) {
+        listEl.innerHTML = '<li style="color:#64748b; text-align:center; padding:20px;">Geen vrijwilligers aanwezig</li>';
+        return;
+      }
+
+      pins.forEach(pin => {
+        const item = activeSessions[pin];
+        const li = document.createElement('li');
+        li.className = 'vol-item';
+        li.innerHTML = `<span class="name">${item.name}</span><span class="time">In om ${item.checkInTime}</span>`;
+        listEl.appendChild(li);
+      });
+    }
+
+    function configureScriptUrl() {
+      const url = prompt("Plak hier je Google Apps Script WebApp URL:", googleAppScriptUrl);
+      if (url !== null) {
+        googleAppScriptUrl = url.trim();
+        localStorage.setItem('kiosk_script_url', googleAppScriptUrl);
+        fetchVolunteersFromSheet(true);
+        processQueue();
+      }
+    }
+
+    window.addEventListener('online', () => {
+      fetchVolunteersFromSheet();
+      processQueue();
+    });
+
+    setInterval(fetchVolunteersFromSheet, 300000);
+    setInterval(processQueue, 15000);
+
+    renderActiveList();
+    updateSyncBadge();
+    fetchVolunteersFromSheet();
+    processQueue();
+  </script>
+</body>
+</html>

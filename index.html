@@ -1,0 +1,1686 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <!-- Optimalisaties specifiek voor Apple iPad en Touchscreens -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Atelier Vrije Grafiek">
+  <meta name="format-detection" content="telephone=no">
+  <title>Atelier Vrije Grafiek - Aanwezigheidsregistratie</title>
+  
+  <style>
+    :root {
+      --bg-main: #0f172a;
+      --bg-card: #1e293b;
+      --bg-subtle: #334155;
+      --primary: #0284c7;
+      --primary-hover: #0369a1;
+      --accent: #38bdf8;
+      --success: #10b981;
+      --success-dark: #065f46;
+      --danger: #ef4444;
+      --danger-dark: #991b1b;
+      --warning: #f59e0b;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --border: #334155;
+      --radius-lg: 18px;
+      --radius-md: 12px;
+      --radius-sm: 8px;
+      --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body {
+      background-color: var(--bg-main);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      touch-action: manipulation;
+      overflow-x: hidden;
+      padding: env(safe-area-inset-top, 20px) env(safe-area-inset-right, 20px) env(safe-area-inset-bottom, 20px) env(safe-area-inset-left, 20px);
+    }
+
+    /* HEADER */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 24px;
+      background: var(--bg-card);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      margin-bottom: 20px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand-icon {
+      width: 48px;
+      height: 48px;
+      background: linear-gradient(135deg, #0284c7, #38bdf8);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
+    }
+
+    .brand-titles h1 {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: #ffffff;
+    }
+
+    .brand-titles p {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .clock-display {
+      text-align: center;
+    }
+
+    .clock-time {
+      font-size: 32px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: var(--accent);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .clock-date {
+      font-size: 13px;
+      color: var(--text-muted);
+      text-transform: capitalize;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .sync-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #0f172a;
+      padding: 8px 14px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .dot-online { background-color: var(--success); box-shadow: 0 0 10px var(--success); }
+    .dot-offline { background-color: var(--danger); box-shadow: 0 0 10px var(--danger); }
+    .dot-syncing { background-color: var(--warning); box-shadow: 0 0 10px var(--warning); animation: pulse 1s infinite; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.85); }
+    }
+
+    .btn-admin {
+      background: var(--bg-subtle);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 10px 16px;
+      border-radius: var(--radius-md);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .btn-admin:active {
+      background: #475569;
+      transform: scale(0.97);
+    }
+
+    /* HOOFDINDELING (RESPONSIVE VOOR IPAD) */
+    .app-grid {
+      display: grid;
+      grid-template-columns: 420px 1fr;
+      gap: 24px;
+      flex: 1;
+      max-width: 1300px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    @media (max-width: 950px) {
+      .app-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* KIOSK INVOER KAART */
+    .kiosk-panel {
+      background: var(--bg-card);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border);
+      padding: 24px;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .kiosk-title {
+      font-size: 16px;
+      color: var(--text-muted);
+      text-align: center;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 600;
+    }
+
+    .pin-display-wrapper {
+      position: relative;
+      margin-bottom: 20px;
+    }
+
+    .pin-display {
+      background: #0f172a;
+      border: 2px solid var(--primary);
+      border-radius: var(--radius-md);
+      height: 70px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 34px;
+      letter-spacing: 14px;
+      color: #ffffff;
+      font-weight: 700;
+      box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5);
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .pin-display.has-value {
+      border-color: var(--accent);
+      box-shadow: 0 0 15px rgba(56, 189, 248, 0.25);
+    }
+
+    /* NUMPAD MET GROTE TOUCH KNOPPEN */
+    .numpad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      flex: 1;
+    }
+
+    .num-btn {
+      background: var(--bg-subtle);
+      color: #ffffff;
+      border: 1px solid #475569;
+      border-radius: 14px;
+      font-size: 28px;
+      font-weight: 700;
+      height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background-color 0.15s, transform 0.1s;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    }
+
+    .num-btn:active {
+      background: #64748b;
+      transform: scale(0.95);
+    }
+
+    .btn-fn-clear {
+      background: #451a1a;
+      border-color: #7f1d1d;
+      color: #fca5a5;
+      font-size: 20px;
+    }
+    .btn-fn-clear:active { background: #7f1d1d; }
+
+    .btn-fn-back {
+      background: #374151;
+      border-color: #4b5563;
+      color: #e5e7eb;
+      font-size: 22px;
+    }
+    .btn-fn-back:active { background: #4b5563; }
+
+    .btn-submit {
+      grid-column: span 3;
+      background: linear-gradient(135deg, #059669, #10b981);
+      border: none;
+      border-radius: 14px;
+      color: white;
+      font-size: 20px;
+      font-weight: 700;
+      height: 68px;
+      cursor: pointer;
+      margin-top: 6px;
+      box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      letter-spacing: 0.5px;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+
+    .btn-submit:active {
+      transform: scale(0.97);
+    }
+
+    .btn-submit:disabled {
+      background: #475569;
+      opacity: 0.6;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    /* RECHTER PANEEL: AANWEZIGEN & STATUS */
+    .status-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* MELDINGEN BANNER (POPUP BIJ IN- OF UITCHECK) */
+    .feedback-banner {
+      display: none;
+      padding: 18px 22px;
+      border-radius: var(--radius-lg);
+      font-size: 16px;
+      font-weight: 600;
+      animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: var(--shadow);
+    }
+
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-15px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .banner-incheck {
+      background: linear-gradient(135deg, #064e3b, #047857);
+      border: 1px solid #10b981;
+      color: #ecfdf5;
+    }
+
+    .banner-uitcheck {
+      background: linear-gradient(135deg, #1e3a8a, #2563eb);
+      border: 1px solid #60a5fa;
+      color: #eff6ff;
+    }
+
+    .banner-error {
+      background: linear-gradient(135deg, #7f1d1d, #b91c1c);
+      border: 1px solid #ef4444;
+      color: #fef2f2;
+    }
+
+    .feedback-banner .banner-header {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .feedback-banner .banner-sub {
+      font-size: 14px;
+      opacity: 0.9;
+      font-weight: 400;
+    }
+
+    /* AANWEZIGEN LIJST */
+    .presence-card {
+      background: var(--bg-card);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border);
+      padding: 24px;
+      box-shadow: var(--shadow);
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .presence-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .presence-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .badge-count {
+      background: #0284c7;
+      color: white;
+      font-size: 14px;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 20px;
+    }
+
+    .user-list {
+      list-style: none;
+      overflow-y: auto;
+      max-height: 480px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex: 1;
+      padding-right: 4px;
+    }
+
+    .user-card {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-left: 5px solid var(--success);
+      border-radius: var(--radius-md);
+      padding: 14px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: transform 0.15s, border-color 0.2s;
+    }
+
+    .user-info .user-name {
+      font-size: 17px;
+      font-weight: 600;
+      color: #ffffff;
+      margin-bottom: 4px;
+    }
+
+    .user-info .user-time {
+      font-size: 13px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .user-duration {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-muted);
+      font-size: 15px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      flex: 1;
+    }
+
+    .empty-state .icon {
+      font-size: 40px;
+      opacity: 0.6;
+    }
+
+    /* MODAL VOOR BEHEER & INSTANCE */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal-window {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      width: 100%;
+      max-width: 650px;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      overflow: hidden;
+      animation: modalPop 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes modalPop {
+      from { opacity: 0; transform: scale(0.94); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .modal-header {
+      padding: 18px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-header h2 {
+      font-size: 20px;
+      color: white;
+    }
+
+    .modal-close {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 26px;
+      cursor: pointer;
+      padding: 4px;
+      line-height: 1;
+    }
+
+    .modal-tabs {
+      display: flex;
+      background: #0f172a;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 14px 10px;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .tab-btn.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+      background: rgba(56, 189, 248, 0.05);
+    }
+
+    .modal-body {
+      padding: 20px 24px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .form-group {
+      margin-bottom: 18px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .form-control {
+      width: 100%;
+      background: #0f172a;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      color: white;
+      font-size: 15px;
+      outline: none;
+      user-select: text;
+      -webkit-user-select: text;
+    }
+
+    .form-control:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+    }
+
+    .btn-action {
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 12px 18px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: background 0.2s;
+    }
+    .btn-action:hover { background: var(--primary-hover); }
+
+    .btn-danger {
+      background: var(--danger-dark);
+      color: #fca5a5;
+      border: 1px solid var(--danger);
+    }
+
+    .user-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+
+    .user-table th, .user-table td {
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+    }
+
+    .user-table th {
+      color: var(--text-muted);
+      font-weight: 600;
+      background: #0f172a;
+    }
+
+    .btn-del {
+      background: #451a1a;
+      color: #f87171;
+      border: none;
+      padding: 6px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .history-item {
+      padding: 10px;
+      background: #0f172a;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+    }
+
+    /* BESCHEIDEN FOOTER LINKSONDER */
+    .staalvaes-credit {
+      margin-top: 24px;
+      padding: 8px 4px 4px;
+      font-family: "Courier New", Courier, monospace;
+      font-size: 12px;
+      color: #64748b;
+      text-align: left;
+    }
+
+    .staalvaes-credit a {
+      color: #64748b;
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    .staalvaes-credit a:hover {
+      color: #94a3b8;
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- BOVENBALK MET KLOK & SYNC STATUS -->
+  <header>
+    <div class="brand">
+      <div class="brand-icon">⏰</div>
+      <div class="brand-titles">
+        <h1>Atelier Vrije Grafiek</h1>
+        <p>Aanwezigheidsregistratie</p>
+      </div>
+    </div>
+
+    <div class="clock-display">
+      <div class="clock-time" id="liveTime">--:--:--</div>
+      <div class="clock-date" id="liveDate">Laden...</div>
+    </div>
+
+    <div class="header-actions">
+      <div class="sync-indicator">
+        <span id="syncDot" class="dot dot-online"></span>
+        <span id="syncText">Verbonden</span>
+      </div>
+      <button type="button" class="btn-admin" onclick="openAdminPinPrompt()">
+        ⚙️ Beheer
+      </button>
+    </div>
+  </header>
+
+  <!-- CENTRALE GRID -->
+  <main class="app-grid">
+    <!-- LINKER KOLOM: NUMPAD & INVOER -->
+    <section class="kiosk-panel">
+      <div class="kiosk-title">Voer je persoonlijke code in</div>
+
+      <div class="pin-display-wrapper">
+        <div class="pin-display" id="pinDisplay">----</div>
+      </div>
+
+      <div class="numpad">
+        <button type="button" class="num-btn" onclick="pressKey('1')">1</button>
+        <button type="button" class="num-btn" onclick="pressKey('2')">2</button>
+        <button type="button" class="num-btn" onclick="pressKey('3')">3</button>
+
+        <button type="button" class="num-btn" onclick="pressKey('4')">4</button>
+        <button type="button" class="num-btn" onclick="pressKey('5')">5</button>
+        <button type="button" class="num-btn" onclick="pressKey('6')">6</button>
+
+        <button type="button" class="num-btn" onclick="pressKey('7')">7</button>
+        <button type="button" class="num-btn" onclick="pressKey('8')">8</button>
+        <button type="button" class="num-btn" onclick="pressKey('9')">9</button>
+
+        <button type="button" class="num-btn btn-fn-clear" onclick="clearPin()">WISSEN</button>
+        <button type="button" class="num-btn" onclick="pressKey('0')">0</button>
+        <button type="button" class="num-btn btn-fn-back" onclick="backspacePin()">⌫</button>
+
+        <button type="button" class="btn-submit" id="btnSubmit" onclick="submitAttendance()">
+          <span>✓</span> REGISTREER AANWEZIGHEID
+        </button>
+      </div>
+    </section>
+
+    <!-- RECHTER KOLOM: FEEDBACK & AANWEZIGHEIDSLIJST -->
+    <section class="status-panel">
+      <!-- MELDINGSBALK BIJ SCAN -->
+      <div id="feedbackBanner" class="feedback-banner">
+        <div class="banner-header" id="bannerHeader">Ingecheckt</div>
+        <div class="banner-sub" id="bannerSub">Welkom in het atelier!</div>
+      </div>
+
+      <!-- AANWEZIGEN KAART -->
+      <div class="presence-card">
+        <div class="presence-header">
+          <div class="presence-title">
+            <span>Nu aanwezig in het atelier</span>
+          </div>
+          <span class="badge-count" id="presenceCount">0 personen</span>
+        </div>
+
+        <ul class="user-list" id="presenceList">
+          <!-- Dynamisch gevuld -->
+        </ul>
+        
+        <div id="emptyPresenceState" class="empty-state">
+          <div class="icon">🛋️</div>
+          <div>Er is momenteel niemand ingecheckt in het atelier.</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- BESCHEIDEN LINK LINKSONDER -->
+  <footer class="staalvaes-credit">
+    <a href="https://www.wimvaes.be/" target="_blank" rel="noopener noreferrer"># another Staalvaes production.</a>
+  </footer>
+
+  <!-- BEHEER MODAL -->
+  <div id="adminModal" class="modal-backdrop">
+    <div class="modal-window">
+      <div class="modal-header">
+        <h2>Atelier Vrije Grafiek - Beheer</h2>
+        <button type="button" class="modal-close" onclick="closeAdminModal()">✕</button>
+      </div>
+
+      <div class="modal-tabs">
+        <button type="button" class="tab-btn active" onclick="switchAdminTab('users')">👥 Codes & Gebruikers</button>
+        <button type="button" class="tab-btn" onclick="switchAdminTab('sheets')">📊 Google Sheets</button>
+        <button type="button" class="tab-btn" onclick="switchAdminTab('logs')">📋 Registraties</button>
+      </div>
+
+      <!-- TAB 1: GEBRUIKERS & CODES -->
+      <div id="tabUsers" class="modal-body">
+        <!-- SNELLE ACTIE: IEDEREEN UITLOGGEN -->
+        <div style="background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.35); border-radius: 10px; padding: 14px 18px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+          <div>
+            <div style="font-weight: 700; color: #fca5a5; font-size: 15px; display: flex; align-items: center; gap: 8px;">
+              <span>🚪</span> Atelier Aanwezigheid Beheren
+            </div>
+            <div style="font-size: 13px; color: var(--text-muted); margin-top: 3px;">
+              Momenteel in het atelier: <strong id="adminPresenceCount" style="color: #ffffff;">0 personen</strong>
+            </div>
+          </div>
+          <button type="button" class="btn-action btn-danger" style="padding: 10px 16px; font-size: 13px; font-weight: 700;" onclick="checkOutEveryoneManual()">
+            🚪 Iedereen Nu Uitloggen
+          </button>
+        </div>
+
+        <!-- AUTOMATISCH UITLOGGEN OPTIE -->
+        <div style="background: #0f172a; border: 1px solid var(--border); border-radius: 10px; padding: 14px 18px; margin-bottom: 20px;">
+          <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none;">
+            <input type="checkbox" id="autoCheckoutToggle" onchange="toggleAutoCheckout(this.checked)" style="width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer;">
+            <span style="font-size: 14px; font-weight: 600; color: #ffffff;">Automatisch iedereen uitloggen om 23:59</span>
+          </label>
+          <p style="font-size: 12px; color: var(--text-muted); margin-top: 6px; margin-left: 28px; line-height: 1.4;">
+            Sluit op het einde van de dag (23:59) alle openstaande aanwezigheden af, berekent de duur en stuurt de registratie automatisch naar Google Sheets. Haalt dit ook in als de iPad 's nachts op stand-by stond.
+          </p>
+        </div>
+
+        <div style="background: #0f172a; padding: 16px; border-radius: 8px; margin-bottom: 20px; border: 1px solid var(--border);">
+          <h3 style="font-size: 15px; margin-bottom: 12px; color: var(--accent);">Nieuwe code toevoegen</h3>
+          <div style="display: grid; grid-template-columns: 120px 1fr auto; gap: 10px;">
+            <input type="text" id="newPin" class="form-control" placeholder="Code (bijv 1234)" maxlength="8">
+            <input type="text" id="newName" class="form-control" placeholder="Naam van de persoon">
+            <button type="button" class="btn-action" onclick="addUser()">Toevoegen</button>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <h3 style="font-size: 15px;">Geregistreerde gebruikers (<span id="userCount">0</span>)</h3>
+          <button type="button" class="btn-action" style="font-size: 12px; padding: 6px 12px;" onclick="syncFromGoogleSheet(true)">
+            🔄 Ververs uit Sheet
+          </button>
+        </div>
+
+        <div style="max-height: 260px; overflow-y: auto;">
+          <table class="user-table">
+            <thead>
+              <tr>
+                <th>Code</th>
+                <th>Naam</th>
+                <th style="width: 80px; text-align: center;">Actie</th>
+              </tr>
+            </thead>
+            <tbody id="userTableBody">
+              <!-- Dynamisch gevuld -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB 2: GOOGLE SHEETS KOPPELING -->
+      <div id="tabSheets" class="modal-body" style="display: none;">
+        <div class="form-group">
+          <label>Google Apps Script Web-App URL</label>
+          <input type="url" id="sheetUrlInput" class="form-control" placeholder="https://script.google.com/macros/s/.../exec">
+          <p style="font-size: 12px; color: var(--text-muted); margin-top: 6px;">
+            Plak hier de webapp-URL van je Google Apps Script. Bekijk het bijgevoegde <code>GoogleAppsScript.gs</code> bestand voor instructies.
+          </p>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+          <button type="button" class="btn-action" onclick="saveSheetUrl()">URL Opslaan</button>
+          <button type="button" class="btn-action" style="background: #334155;" onclick="testConnection()">Verbinding Testen</button>
+        </div>
+
+        <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
+
+        <h3 style="font-size: 15px; margin-bottom: 10px;">Synchronisatie acties</h3>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <button type="button" class="btn-action" style="background: #0284c7;" onclick="syncFromGoogleSheet(true)">
+            📥 Codes importeren uit Google Sheet
+          </button>
+          <button type="button" class="btn-action" style="background: #059669;" onclick="exportUsersToSheet()">
+            📤 Lokale codes uploaden naar Google Sheet
+          </button>
+          <button type="button" class="btn-action" style="background: #475569;" onclick="forceProcessQueue()">
+            ⚡ Verstuur niet-gesynchroniseerde wachtrij (<span id="queueCount">0</span>)
+          </button>
+        </div>
+      </div>
+
+      <!-- TAB 3: REGISTRATIES / GESCHIEDENIS -->
+      <div id="tabLogs" class="modal-body" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+          <h3 style="font-size: 15px;">Recente registraties van vandaag</h3>
+          <button type="button" class="btn-del" onclick="clearAllLogs()">Logboek leegmaken</button>
+        </div>
+
+        <div id="logsContainer" style="max-height: 320px; overflow-y: auto;">
+          <!-- Dynamisch gevuld -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* =======================================================================
+       ATELIER PRIKKLOK - CORE LOGICA & STATE
+       ======================================================================= */
+    
+    // Standaard demo gebruikers indien leeg
+    const DEFAULT_USERS = {
+      "1234": "Jan Peeters",
+      "5678": "Sophie Willems",
+      "9012": "Luc De Smet",
+      "4321": "Emma Claes"
+    };
+
+    // Standaard Google Apps Script URL (kan worden aangepast in beheer)
+    const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwH220S9kJ_I3ExnJ4Ajq4XWtb6peRnsaXSjpd1pWKXG8UddDp_aFfkYFT6eHVJVPXB/exec";
+
+    // Lokale opslag ophalen
+    let users = JSON.parse(localStorage.getItem('atelier_users') || JSON.stringify(DEFAULT_USERS));
+    let activePresence = JSON.parse(localStorage.getItem('atelier_active') || '{}');
+    let attendanceLogs = JSON.parse(localStorage.getItem('atelier_logs') || '[]');
+    let syncQueue = JSON.parse(localStorage.getItem('atelier_sync_queue') || '[]');
+    let scriptUrl = localStorage.getItem('atelier_script_url') || DEFAULT_SCRIPT_URL;
+    let adminPin = localStorage.getItem('atelier_admin_pin') || "9999";
+
+    let currentPin = "";
+    let isSubmitting = false;
+    let isSyncing = false;
+    let feedbackTimer = null;
+
+    /* =======================================================================
+       KLOK & DATUM WEERGAVE
+       ======================================================================= */
+    function updateClock() {
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+      const dateStr = now.toLocaleDateString('nl-BE', options);
+
+      document.getElementById('liveTime').textContent = timeStr;
+      document.getElementById('liveDate').textContent = dateStr;
+
+      // Update ook verstreken tijd in aanwezigheidslijst
+      updateDurationBadges();
+
+      // Controleer automatisch uitchecken om 23:59 of bij datumwissel
+      checkAutoMidnightCheckout();
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    /* =======================================================================
+       PIN INVOER AFHANDELING
+       ======================================================================= */
+    function pressKey(num) {
+      if (currentPin.length < 8) {
+        currentPin += num;
+        updatePinDisplay();
+      }
+    }
+
+    function clearPin() {
+      currentPin = "";
+      updatePinDisplay();
+    }
+
+    function backspacePin() {
+      currentPin = currentPin.slice(0, -1);
+      updatePinDisplay();
+    }
+
+    function updatePinDisplay() {
+      const display = document.getElementById('pinDisplay');
+      if (currentPin.length === 0) {
+        display.textContent = "----";
+        display.classList.remove('has-value');
+      } else {
+        display.textContent = "•".repeat(currentPin.length);
+        display.classList.add('has-value');
+      }
+    }
+
+    // Ondersteuning voor fysiek toetsenbord (handig bij testen of USB numpad)
+    window.addEventListener('keydown', (e) => {
+      // Alleen reageren als er geen inputveld gefocust is
+      if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+
+      if (e.key >= '0' && e.key <= '9') {
+        pressKey(e.key);
+      } else if (e.key === 'Backspace') {
+        backspacePin();
+      } else if (e.key === 'Escape' || e.key === 'c' || e.key === 'C') {
+        clearPin();
+      } else if (e.key === 'Enter') {
+        submitAttendance();
+      }
+    });
+
+    /* =======================================================================
+       AANWEZIGHEID REGISTREREN (INCHECK / UITCHECK)
+       ======================================================================= */
+    function submitAttendance() {
+      if (isSubmitting) return;
+
+      const pin = currentPin.trim();
+      if (!pin) {
+        showBanner("Geen code ingevoerd", "Voer eerst je persoonlijke cijfercode in.", "error");
+        return;
+      }
+
+      // Controleer of de code bestaat
+      const userName = users[pin];
+      if (!userName) {
+        showBanner("Onbekende code", "Deze code is niet gekend in het systeem. Vraag een beheerder.", "error");
+        clearPin();
+        return;
+      }
+
+      const submitBtn = document.getElementById('btnSubmit');
+      isSubmitting = true;
+      submitBtn.disabled = true;
+
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit' });
+      const fullTimeStr = now.toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const dateStr = now.toLocaleDateString('nl-BE');
+      const uniqueId = `${Date.now()}_${pin}_${Math.random().toString(36).substring(2, 6)}`;
+
+      let logRecord = {};
+
+      if (activePresence[pin]) {
+        // --- UITCHECK AFHANDELING ---
+        const session = activePresence[pin];
+        const checkInTime = session.inTime;
+        const checkInTimestamp = session.timestamp || (now.getTime() - 3600000);
+        const durationStr = calculateDuration(checkInTimestamp, now.getTime());
+
+        delete activePresence[pin];
+
+        logRecord = {
+          id: uniqueId,
+          pin: pin,
+          naam: userName,
+          actie: "UITCHECK",
+          datum: dateStr,
+          tijd: fullTimeStr,
+          inchecktijd: checkInTime,
+          uitchecktijd: timeStr,
+          duur: durationStr
+        };
+
+        showBanner(
+          `Tot ziens, ${userName}!`,
+          `Uitgecheckt om ${timeStr}. Aanwezig geweest: ${durationStr}`,
+          "uitcheck"
+        );
+      } else {
+        // --- INCHECK AFHANDELING ---
+        activePresence[pin] = {
+          name: userName,
+          inTime: timeStr,
+          date: dateStr,
+          timestamp: now.getTime()
+        };
+
+        logRecord = {
+          id: uniqueId,
+          pin: pin,
+          naam: userName,
+          actie: "INCHECK",
+          datum: dateStr,
+          tijd: fullTimeStr,
+          inchecktijd: timeStr,
+          uitchecktijd: "",
+          duur: ""
+        };
+
+        showBanner(
+          `Welkom, ${userName}!`,
+          `Succesvol ingecheckt om ${timeStr}. Werk ze in het atelier!`,
+          "incheck"
+        );
+      }
+
+      // Opslaan in lokale state
+      attendanceLogs.unshift(logRecord);
+      localStorage.setItem('atelier_active', JSON.stringify(activePresence));
+      localStorage.setItem('atelier_logs', JSON.stringify(attendanceLogs.slice(0, 200)));
+
+      // Toevoegen aan sync wachtrij
+      queueSyncItem(logRecord);
+
+      clearPin();
+      renderPresenceList();
+      renderLogs();
+
+      // Debounce knop
+      setTimeout(() => {
+        isSubmitting = false;
+        submitBtn.disabled = false;
+      }, 1000);
+    }
+
+    /* =======================================================================
+       TIJD & DUUR BEREKENING
+       ======================================================================= */
+    function calculateDuration(startTimestamp, endTimestamp) {
+      const diffMs = Math.max(0, endTimestamp - startTimestamp);
+      const totalMinutes = Math.floor(diffMs / 60000);
+      const hours = Math.floor(totalMinutes / 60);
+      const minutes = totalMinutes % 60;
+
+      if (hours === 0) {
+        return `${minutes}m`;
+      }
+      return `${hours}u ${minutes < 10 ? '0' : ''}${minutes}m`;
+    }
+
+    function updateDurationBadges() {
+      const now = Date.now();
+      document.querySelectorAll('.user-card').forEach(card => {
+        const pin = card.getAttribute('data-pin');
+        if (pin && activePresence[pin]) {
+          const badge = card.querySelector('.user-duration');
+          if (badge) {
+            badge.textContent = calculateDuration(activePresence[pin].timestamp, now);
+          }
+        }
+      });
+    }
+
+    /* =======================================================================
+       UI WEERGAVE: MELDINGEN & AANWEZIGEN
+       ======================================================================= */
+    function showBanner(title, message, type) {
+      const banner = document.getElementById('feedbackBanner');
+      const header = document.getElementById('bannerHeader');
+      const sub = document.getElementById('bannerSub');
+
+      if (feedbackTimer) clearTimeout(feedbackTimer);
+
+      banner.className = `feedback-banner banner-${type}`;
+      header.textContent = title;
+      sub.textContent = message;
+      banner.style.display = 'block';
+
+      feedbackTimer = setTimeout(() => {
+        banner.style.display = 'none';
+      }, 5000);
+    }
+
+    function renderPresenceList() {
+      const listEl = document.getElementById('presenceList');
+      const countEl = document.getElementById('presenceCount');
+      const emptyState = document.getElementById('emptyPresenceState');
+
+      listEl.innerHTML = '';
+      const pins = Object.keys(activePresence);
+      countEl.textContent = `${pins.length} ${pins.length === 1 ? 'persoon' : 'personen'}`;
+      updateAdminPresenceCount();
+
+      if (pins.length === 0) {
+        emptyState.style.display = 'flex';
+        listEl.style.display = 'none';
+        return;
+      }
+
+      emptyState.style.display = 'none';
+      listEl.style.display = 'flex';
+
+      const now = Date.now();
+      pins.forEach(pin => {
+        const item = activePresence[pin];
+        const li = document.createElement('li');
+        li.className = 'user-card';
+        li.setAttribute('data-pin', pin);
+
+        const duration = calculateDuration(item.timestamp, now);
+
+        li.innerHTML = `
+          <div class="user-info">
+            <div class="user-name">${escapeHtml(item.name)}</div>
+            <div class="user-time">
+              <span>🕒 Ingecheckt om ${escapeHtml(item.inTime)}</span>
+            </div>
+          </div>
+          <div class="user-duration">${duration}</div>
+        `;
+        listEl.appendChild(li);
+      });
+    }
+
+    /* =======================================================================
+       GOOGLE SHEETS SYNCHRONISATIE & OFFLINE QUEUE
+       ======================================================================= */
+    function updateSyncStatus() {
+      const dot = document.getElementById('syncDot');
+      const text = document.getElementById('syncText');
+      const queueBadge = document.getElementById('queueCount');
+
+      if (queueBadge) queueBadge.textContent = syncQueue.length;
+
+      if (!navigator.onLine) {
+        dot.className = "dot dot-offline";
+        text.textContent = `Offline (${syncQueue.length} in wachtrij)`;
+      } else if (syncQueue.length > 0) {
+        dot.className = "dot dot-syncing";
+        text.textContent = `Synchroniseren... (${syncQueue.length})`;
+      } else {
+        dot.className = "dot dot-online";
+        text.textContent = "Verbonden met Cloud";
+      }
+    }
+
+    function queueSyncItem(item) {
+      // Voorkom exacte duplicaten
+      const exists = syncQueue.some(q => q.id === item.id);
+      if (!exists) {
+        syncQueue.push(item);
+        localStorage.setItem('atelier_sync_queue', JSON.stringify(syncQueue));
+      }
+      updateSyncStatus();
+      processQueue();
+    }
+
+    async function processQueue() {
+      if (isSyncing || syncQueue.length === 0 || !navigator.onLine || !scriptUrl) {
+        updateSyncStatus();
+        return;
+      }
+
+      isSyncing = true;
+      updateSyncStatus();
+
+      try {
+        while (syncQueue.length > 0 && navigator.onLine) {
+          const item = syncQueue[0];
+          
+          await fetch(scriptUrl, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(item)
+          });
+
+          syncQueue.shift();
+          localStorage.setItem('atelier_sync_queue', JSON.stringify(syncQueue));
+          updateSyncStatus();
+        }
+      } catch (err) {
+        console.error("Netwerkfout tijdens sync:", err);
+      } finally {
+        isSyncing = false;
+        updateSyncStatus();
+      }
+    }
+
+    async function syncFromGoogleSheet(notify = false) {
+      if (!scriptUrl) {
+        if (notify) alert("Configureer eerst een Google Apps Script URL bij instellingen.");
+        return;
+      }
+      if (!navigator.onLine) {
+        if (notify) alert("Je bent momenteel offline. Kan niet verbinden met Google Sheets.");
+        return;
+      }
+
+      try {
+        const response = await fetch(scriptUrl);
+        if (response.ok) {
+          const data = await response.json();
+          if (data && data.gebruikers && Object.keys(data.gebruikers).length > 0) {
+            users = data.gebruikers;
+            localStorage.setItem('atelier_users', JSON.stringify(users));
+            renderUserTable();
+            if (notify) alert(`Succes! ${Object.keys(users).length} gebruikers en codes geladen uit Google Sheet.`);
+          } else {
+            if (notify) alert("Geen gebruikers gevonden in het tabblad 'Gebruikers' van de Google Sheet.");
+          }
+        } else {
+          if (notify) alert("Fout bij ophalen van data uit Google Sheets.");
+        }
+      } catch (err) {
+        console.error("Fout bij ophalen gebruikers:", err);
+        if (notify) alert("Kon Google Sheet niet bereiken. Controleer de URL en je internetverbinding.");
+      }
+    }
+
+    async function exportUsersToSheet() {
+      if (!scriptUrl) {
+        alert("Geen Google Apps Script URL ingesteld.");
+        return;
+      }
+      if (!confirm(`Wil je alle ${Object.keys(users).length} lokale codes opslaan in de Google Sheet?`)) return;
+
+      try {
+        await fetch(scriptUrl, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: "save_users",
+            users: users
+          })
+        });
+        alert("De codes zijn succesvol doorgestuurd naar Google Sheets!");
+      } catch (err) {
+        alert("Fout bij exporteren: " + err.message);
+      }
+    }
+
+    function forceProcessQueue() {
+      processQueue();
+      alert(`Wachtrij gestart (${syncQueue.length} items).`);
+    }
+
+    /* =======================================================================
+       BEHEERDER PANEEL (ADMIN)
+       ======================================================================= */
+    function openAdminPinPrompt() {
+      const input = prompt("Voer de beheerder PIN-code in (standaard: 9999):");
+      if (input === adminPin) {
+        openAdminModal();
+      } else if (input !== null) {
+        alert("Onjuiste beheerder PIN-code.");
+      }
+    }
+
+    function openAdminModal() {
+      document.getElementById('sheetUrlInput').value = scriptUrl;
+      const autoToggle = document.getElementById('autoCheckoutToggle');
+      if (autoToggle) {
+        autoToggle.checked = localStorage.getItem('atelier_auto_checkout_enabled') !== 'false';
+      }
+      updateAdminPresenceCount();
+      renderUserTable();
+      renderLogs();
+      updateSyncStatus();
+      document.getElementById('adminModal').style.display = 'flex';
+    }
+
+    function closeAdminModal() {
+      document.getElementById('adminModal').style.display = 'none';
+    }
+
+    /* =======================================================================
+       IEDEREEN UITLOGGEN & AUTOMATISCH 23:59 SYSTEEM
+       ======================================================================= */
+    function checkOutEveryone(isAuto = false) {
+      const pins = Object.keys(activePresence);
+      if (pins.length === 0) {
+        if (!isAuto) alert("Er zijn momenteel geen geregistreerde aanwezigen in het atelier.");
+        return;
+      }
+
+      if (!isAuto) {
+        const confirmMsg = `Weet je zeker dat je alle ${pins.length} aanwezige(n) direct wilt uitloggen uit het atelier?`;
+        if (!confirm(confirmMsg)) return;
+      }
+
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('nl-BE');
+      const timeStr = isAuto ? "23:59" : now.toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit' });
+      const fullTimeStr = isAuto ? "23:59:00" : now.toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+      pins.forEach(pin => {
+        const session = activePresence[pin];
+        const userName = session.name || users[pin] || "Onbekend";
+        const checkInTime = session.inTime;
+        const sessionDate = session.date || dateStr;
+
+        let endTimestamp = now.getTime();
+        if (isAuto && session.timestamp) {
+          const endOfDay = new Date(session.timestamp);
+          endOfDay.setHours(23, 59, 0, 0);
+          endTimestamp = endOfDay.getTime();
+        }
+        const checkInTimestamp = session.timestamp || (endTimestamp - 3600000);
+        const durationStr = calculateDuration(checkInTimestamp, endTimestamp);
+
+        const uniqueId = `${Date.now()}_${pin}_${Math.random().toString(36).substring(2, 6)}`;
+        const logRecord = {
+          id: uniqueId,
+          pin: pin,
+          naam: userName,
+          actie: isAuto ? "UITCHECK (Auto 23:59)" : "UITCHECK (Beheer)",
+          datum: sessionDate,
+          tijd: fullTimeStr,
+          inchecktijd: checkInTime,
+          uitchecktijd: timeStr,
+          duur: durationStr
+        };
+
+        attendanceLogs.unshift(logRecord);
+        queueSyncItem(logRecord);
+      });
+
+      activePresence = {};
+      localStorage.setItem('atelier_active', JSON.stringify(activePresence));
+      localStorage.setItem('atelier_logs', JSON.stringify(attendanceLogs.slice(0, 200)));
+
+      renderPresenceList();
+      renderLogs();
+      updateAdminPresenceCount();
+
+      if (isAuto) {
+        showBanner("Einde van de dag (23:59)", "Alle aanwezigen zijn automatisch uitgecheckt.", "uitcheck");
+      } else {
+        showBanner("Iedereen uitgelogd", `Alle ${pins.length} personen zijn afgemeld door beheerder.`, "uitcheck");
+        alert(`Succes: ${pins.length} persoon/personen zijn uitgecheckt.`);
+      }
+    }
+
+    function checkOutEveryoneManual() {
+      checkOutEveryone(false);
+    }
+
+    function toggleAutoCheckout(enabled) {
+      localStorage.setItem('atelier_auto_checkout_enabled', enabled ? 'true' : 'false');
+    }
+
+    function updateAdminPresenceCount() {
+      const el = document.getElementById('adminPresenceCount');
+      if (el) {
+        const count = Object.keys(activePresence).length;
+        el.textContent = `${count} ${count === 1 ? 'persoon' : 'personen'}`;
+      }
+    }
+
+    function checkAutoMidnightCheckout() {
+      const autoEnabled = localStorage.getItem('atelier_auto_checkout_enabled') !== 'false';
+      if (!autoEnabled) return;
+
+      const now = new Date();
+      const currentHours = now.getHours();
+      const currentMinutes = now.getMinutes();
+      const todayDateStr = now.toLocaleDateString('nl-BE');
+      const lastAutoDate = localStorage.getItem('atelier_last_auto_checkout_date');
+
+      // Check 1: Klok bereikt 23:59 en er zijn nog aanwezigen
+      if (currentHours === 23 && currentMinutes >= 59) {
+        if (lastAutoDate !== todayDateStr) {
+          if (Object.keys(activePresence).length > 0) {
+            console.log("23:59 bereikt: Automatisch iedereen uitchecken...");
+            checkOutEveryone(true);
+          }
+          localStorage.setItem('atelier_last_auto_checkout_date', todayDateStr);
+        }
+      }
+
+      // Check 2: Herstelcontrole als de iPad 's nachts dichtgeklapt of op stand-by stond
+      // Sluit alle openstaande sessies van een eerdere datum af om 23:59 van die datum
+      const pins = Object.keys(activePresence);
+      let staleFound = false;
+
+      pins.forEach(pin => {
+        const session = activePresence[pin];
+        if (session && session.date && session.date !== todayDateStr) {
+          staleFound = true;
+          const userName = session.name || users[pin] || "Onbekend";
+          const checkInTime = session.inTime;
+          const sessionDate = session.date;
+
+          let endTimestamp = (session.timestamp || Date.now()) + 3600000;
+          if (session.timestamp) {
+            const endOfDay = new Date(session.timestamp);
+            endOfDay.setHours(23, 59, 0, 0);
+            endTimestamp = endOfDay.getTime();
+          }
+          const checkInTimestamp = session.timestamp || endTimestamp;
+          const durationStr = calculateDuration(checkInTimestamp, endTimestamp);
+          const uniqueId = `${Date.now()}_${pin}_stale_${Math.random().toString(36).substring(2, 6)}`;
+
+          const logRecord = {
+            id: uniqueId,
+            pin: pin,
+            naam: userName,
+            actie: "UITCHECK (Auto 23:59)",
+            datum: sessionDate,
+            tijd: "23:59:00",
+            inchecktijd: checkInTime,
+            uitchecktijd: "23:59",
+            duur: durationStr
+          };
+
+          delete activePresence[pin];
+          attendanceLogs.unshift(logRecord);
+          queueSyncItem(logRecord);
+        }
+      });
+
+      if (staleFound) {
+        localStorage.setItem('atelier_active', JSON.stringify(activePresence));
+        localStorage.setItem('atelier_logs', JSON.stringify(attendanceLogs.slice(0, 200)));
+        renderPresenceList();
+        renderLogs();
+        updateAdminPresenceCount();
+      }
+    }
+
+    function switchAdminTab(tabName) {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.getElementById('tabUsers').style.display = 'none';
+      document.getElementById('tabSheets').style.display = 'none';
+      document.getElementById('tabLogs').style.display = 'none';
+
+      if (tabName === 'users') {
+        event.target.classList.add('active');
+        document.getElementById('tabUsers').style.display = 'block';
+      } else if (tabName === 'sheets') {
+        event.target.classList.add('active');
+        document.getElementById('tabSheets').style.display = 'block';
+      } else if (tabName === 'logs') {
+        event.target.classList.add('active');
+        document.getElementById('tabLogs').style.display = 'block';
+      }
+    }
+
+    function renderUserTable() {
+      const tbody = document.getElementById('userTableBody');
+      const countEl = document.getElementById('userCount');
+      tbody.innerHTML = '';
+
+      const pins = Object.keys(users);
+      countEl.textContent = pins.length;
+
+      pins.forEach(pin => {
+        const name = users[pin];
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><strong style="color: var(--accent);">${escapeHtml(pin)}</strong></td>
+          <td>${escapeHtml(name)}</td>
+          <td style="text-align: center;">
+            <button type="button" class="btn-del" onclick="deleteUser('${escapeHtml(pin)}')">Verwijder</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function addUser() {
+      const pinInput = document.getElementById('newPin');
+      const nameInput = document.getElementById('newName');
+      const pin = pinInput.value.trim();
+      const name = nameInput.value.trim();
+
+      if (!pin || !name) {
+        alert("Vul zowel een code als een naam in.");
+        return;
+      }
+
+      if (users[pin]) {
+        if (!confirm(`Code ${pin} is momenteel al toegewezen aan ${users[pin]}. Overschrijven?`)) {
+          return;
+        }
+      }
+
+      users[pin] = name;
+      localStorage.setItem('atelier_users', JSON.stringify(users));
+      pinInput.value = '';
+      nameInput.value = '';
+      renderUserTable();
+    }
+
+    function deleteUser(pin) {
+      if (confirm(`Weet je zeker dat je ${users[pin]} (code: ${pin}) wilt verwijderen?`)) {
+        delete users[pin];
+        localStorage.setItem('atelier_users', JSON.stringify(users));
+        renderUserTable();
+      }
+    }
+
+    function saveSheetUrl() {
+      const url = document.getElementById('sheetUrlInput').value.trim();
+      scriptUrl = url;
+      localStorage.setItem('atelier_script_url', url);
+      alert("Google Apps Script URL opgeslagen.");
+      updateSyncStatus();
+    }
+
+    async function testConnection() {
+      const url = document.getElementById('sheetUrlInput').value.trim();
+      if (!url) {
+        alert("Vul eerst een URL in.");
+        return;
+      }
+
+      try {
+        const res = await fetch(url);
+        if (res.ok) {
+          const data = await res.json();
+          alert("Verbinding geslaagd! Antwoord van Google Sheet: " + JSON.stringify(data.status || data));
+        } else {
+          alert("Verbinding gaf HTTP foutcode: " + res.status);
+        }
+      } catch (e) {
+        alert("Kon geen verbinding maken. Mogelijke oorzaken: URL klopt niet, of Web-App staat niet op 'Iedereen' ingesteld in Apps Script.");
+      }
+    }
+
+    function renderLogs() {
+      const container = document.getElementById('logsContainer');
+      container.innerHTML = '';
+
+      if (attendanceLogs.length === 0) {
+        container.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 20px;">Nog geen registraties vandaag.</div>';
+        return;
+      }
+
+      attendanceLogs.slice(0, 50).forEach(log => {
+        const isCheckIn = log.actie === 'INCHECK';
+        const div = document.createElement('div');
+        div.className = 'history-item';
+        div.innerHTML = `
+          <div>
+            <strong style="color: ${isCheckIn ? 'var(--success)' : 'var(--accent)'};">${escapeHtml(log.actie)}</strong>: 
+            ${escapeHtml(log.naam)} <span style="color: var(--text-muted); font-size: 11px;">(${escapeHtml(log.pin)})</span>
+          </div>
+          <div style="color: var(--text-muted);">
+            ${escapeHtml(log.tijd || log.inchecktijd)} ${log.duur ? `• ${escapeHtml(log.duur)}` : ''}
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function clearAllLogs() {
+      if (confirm("Weet je zeker dat je de lokale registratiehistoriek wilt wissen? (Google Sheets blijft bewaard)")) {
+        attendanceLogs = [];
+        localStorage.setItem('atelier_logs', JSON.stringify([]));
+        renderLogs();
+      }
+    }
+
+    function escapeHtml(text) {
+      if (!text) return "";
+      return String(text).replace(/[&<>"']/g, function(m) {
+        return {
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#039;'
+        }[m];
+      });
+    }
+
+    /* =======================================================================
+       SYSTEEM EVENTS & INITIALISATIE
+       ======================================================================= */
+    window.addEventListener('online', () => {
+      updateSyncStatus();
+      syncFromGoogleSheet();
+      processQueue();
+    });
+
+    window.addEventListener('offline', () => {
+      updateSyncStatus();
+    });
+
+    // Synchroniseer tussen tabbladen indien meerdere openstaan
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'atelier_active') {
+        activePresence = JSON.parse(e.newValue || '{}');
+        renderPresenceList();
+      } else if (e.key === 'atelier_users') {
+        users = JSON.parse(e.newValue || '{}');
+        renderUserTable();
+      }
+    });
+
+    // Luister naar iPad ontwaken uit stand-by of wisselen van app
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        checkAutoMidnightCheckout();
+        processQueue();
+      }
+    });
+    window.addEventListener('pageshow', () => {
+      checkAutoMidnightCheckout();
+    });
+    window.addEventListener('focus', () => {
+      checkAutoMidnightCheckout();
+    });
+
+    // Start-up
+    checkAutoMidnightCheckout();
+    renderPresenceList();
+    renderUserTable();
+    updateSyncStatus();
+    syncFromGoogleSheet(false);
+    processQueue();
+  </script>
+</body>
+</html>
